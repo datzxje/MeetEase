@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import Head from "next/head";
 import { FaRegEnvelope, FaGithub } from "react-icons/fa";
@@ -6,12 +6,37 @@ import { MdLockOutline } from "react-icons/md";
 import { FcGoogle } from "react-icons/fc";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import axiosInstance from "@/utils/axiosInstance";
+import { useAuthContext } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleSignIn = () => {
-    router.push("/home");
+  // State để lưu thông tin email và password
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false); 
+  const [error, setError] = useState<string | null>(null);
+  const { setAccessToken } = useAuthContext(); 
+
+  const handleSignIn = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axiosInstance.post("/auth/login", { email, password });
+
+      const { token } = response.data;
+
+      setAccessToken(token);
+
+      router.push("/home");
+    } catch (err) {
+      setError("Invalid email or password"); 
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,6 +76,8 @@ export default function LoginPage() {
                 name="email"
                 placeholder="Email"
                 className="bg-transparent outline-none text-sm flex-1 text-white"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)} 
               />
             </div>
 
@@ -61,6 +88,8 @@ export default function LoginPage() {
                 name="password"
                 placeholder="Password"
                 className="bg-transparent outline-none text-sm flex-1 text-white"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)} 
               />
             </div>
 
@@ -73,11 +102,16 @@ export default function LoginPage() {
                 Forgot Password?
               </a>
             </div>
+
+            {/* Hiển thị lỗi nếu có */}
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
             <button
               onClick={handleSignIn}
               className="border-2 text-white rounded-full px-12 py-2 font-semibold hover:bg-dark-3 hover:text-white"
+              disabled={loading} // Vô hiệu hóa nút khi đang tải
             >
-              Sign In
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </motion.div>
 

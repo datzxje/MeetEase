@@ -1,16 +1,61 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Head from "next/head";
 import { FaRegEnvelope } from "react-icons/fa";
 import { MdLockOutline } from "react-icons/md";
 import { motion } from "framer-motion";
+import axiosInstance from "@/utils/axiosInstance";
+import { useSignUpContext } from "@/context/SignUpContext";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const { setSignUpData } = useSignUpContext();
+  const [formData, setFormData] = useState({
+    fullname: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    birthyear: "",
+    gender: "",
+  });
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignUp = () => {
-    router.push("/verify");
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "birthyear" ? parseInt(value, 10) : value, 
+    }));
+  };
+
+  const handleSignUp = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      setErrorMessage("Passwords do not match.");
+      return;
+    }
+
+    const signUpRequest = {
+      fullname: formData.fullname,
+      email: formData.email,
+      password: formData.password,
+      yearOfBirth: +formData.birthyear,
+    };
+
+    try {
+      setIsLoading(true);
+      setErrorMessage(""); // Clear previous errors
+      // Call the sign-up API
+      await axiosInstance.post("/user/signup", signUpRequest, { withCredentials: true });
+      setSignUpData(signUpRequest);
+      router.push(`/verify`);
+    } catch (error: any) {
+      setErrorMessage(error?.response?.data?.message || "Something went wrong!");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,6 +86,8 @@ export default function SignUpPage() {
                   type="text"
                   name="fullname"
                   placeholder="Full Name"
+                  value={formData.fullname}
+                  onChange={handleInputChange}
                   className="bg-transparent outline-none text-sm flex-1 text-white"
                 />
               </div>
@@ -51,6 +98,8 @@ export default function SignUpPage() {
                     type="number"
                     name="birthyear"
                     placeholder="Birth Year"
+                    value={formData.birthyear}
+                    onChange={handleInputChange}
                     className="bg-transparent outline-none text-sm flex-1 text-white"
                   />
                 </div>
@@ -58,14 +107,16 @@ export default function SignUpPage() {
                 <div className="bg-dark-2 p-3 flex items-center rounded border border-gray-500 w-[48%]">
                   <select
                     name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
                     className="bg-transparent outline-none text-sm flex-1 text-gray-500"
-                    defaultValue=""
                   >
                     <option value="" disabled hidden>
                       Gender
                     </option>
                     <option value="male">Male</option>
                     <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
               </div>
@@ -75,6 +126,8 @@ export default function SignUpPage() {
                 <input
                   type="email"
                   name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
                   placeholder="Email"
                   className="bg-transparent outline-none text-sm flex-1 text-white"
                 />
@@ -85,6 +138,8 @@ export default function SignUpPage() {
                 <input
                   type="password"
                   name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
                   placeholder="Password"
                   className="bg-transparent outline-none text-sm flex-1 text-white"
                 />
@@ -95,16 +150,21 @@ export default function SignUpPage() {
                 <input
                   type="password"
                   name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
                   placeholder="Confirm Password"
                   className="bg-transparent outline-none text-sm flex-1 text-white"
                 />
               </div>
 
+              {errorMessage && <p className="text-red-500 mb-4">{errorMessage}</p>}
+
               <button
                 onClick={handleSignUp}
                 className="border-2 text-white rounded-full px-12 py-2 font-semibold hover:bg-dark-3 hover:text-white w-80"
+                disabled={isLoading}
               >
-                Sign Up
+                {isLoading ? "Signing Up..." : "Sign Up"}
               </button>
             </motion.div>
 

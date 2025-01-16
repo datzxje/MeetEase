@@ -1,22 +1,35 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
+import { useRouter } from "next/navigation";
+import axiosInstance from "@/utils/axiosInstance";
+import { useSignUpContext } from '@/context/SignUpContext';
 
-export default function Home() {
+export default function VerifyPage() {
   const [code, setCode] = useState<string[]>(new Array(6).fill(''));
+  const [timer, setTimer] = useState<number>(60); // Thời gian đếm ngược
+  const [isResendVisible, setIsResendVisible] = useState<boolean>(false);
+  const [isVerifying, setIsVerifying] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isVerified, setIsVerified] = useState<boolean>(false); // New state for successful verification message
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  const router = useRouter(); // Use router for navigation
+
+  // Giả sử thông tin đăng ký lấy từ context
+  const { signUpData } = useSignUpContext();
 
   const handleChange = (value: string, index: number) => {
-    if (/^[0-9]$/.test(value)) {
+    if (value === '' || /^[0-9]$/.test(value)) {
       const newCode = [...code];
       newCode[index] = value;
       setCode(newCode);
 
-      // Move focus to the next input
-      if (index < 5) {
+      if (value && index < 5) {
         inputs.current[index + 1]?.focus();
       }
+    } else {
+      alert('Only numeric values are allowed.');
     }
   };
 
@@ -26,9 +39,76 @@ export default function Home() {
     }
   };
 
-  const handleSubmit = () => {
-    alert(`Entered Code: ${code.join('')}`);
+  const handleSubmit = async () => {
+    if (!signUpData) {
+      alert('Sign up data is missing.');
+      return;
+    }
+
+    if (code.includes('')) {
+      alert('Please fill all fields before submitting.');
+      return;
+    }
+
+    try {
+      setIsVerifying(true);
+      setErrorMessage(null);
+
+      const verifyRequest = {
+        email: signUpData.email,
+        code: code.join(''),
+        signUpRequest: {
+          fullname: signUpData.fullname,
+          email: signUpData.email,
+          password: signUpData.password,
+          yearOfBirth: signUpData.yearOfBirth,
+        },
+      };
+
+      const response = await axiosInstance.post('/user/verify', verifyRequest);
+      alert('Verification successful!');
+      console.log('API response:', response.data);
+
+      // After successful verification, show the success message
+      setIsVerified(true);
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || 'Verification failed.');
+    } finally {
+      setIsVerifying(false);
+    }
   };
+
+  const handleResend = async () => {
+    if (!signUpData) {
+      alert('Sign up data is missing.');
+      return;
+    }
+
+    try {
+      setIsResendVisible(false);
+      setTimer(60);
+      setErrorMessage(null);
+
+      const response = await axiosInstance.post(`/user/resend-code?email=${encodeURIComponent(signUpData.email)}`);
+
+      alert('Verification code resent successfully.');
+      console.log('Resend response:', response.data);
+    } catch (error: any) {
+      setErrorMessage(error.response?.data?.message || 'Failed to resend code.');
+    }
+  };
+
+  useEffect(() => {
+    if (timer > 0) {
+      const interval = setInterval(() => {
+        setTimer(prev => prev - 1);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setIsResendVisible(true);
+    }
+  }, [timer]);
 
   return (
     <div className="flex flex-col items-center justify-center h-screen py-2">
@@ -60,18 +140,21 @@ export default function Home() {
                     onChange={(e) => handleChange(e.target.value, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
                     ref={(el: HTMLInputElement | null): void => {
-  inputs.current[index] = el;
-}}
+                      inputs.current[index] = el;
+                    }}
                     className="w-12 h-12 text-center text-xl border rounded-md focus:ring-2 focus:ring-emerald-500 outline-none border-gray-300"
                   />
                 ))}
               </div>
 
+              {errorMessage && <p className="text-red-500 mb-2">{errorMessage}</p>}
+
               <button
                 onClick={handleSubmit}
-                className="w-full bg-emerald-500 text-white py-2 px-4 rounded-md hover:bg-emerald-600 transition duration-200"
+                disabled={isVerifying}
+                className="w-full bg-emerald-500 text-white py-2 px-4 rounded-md hover:bg-emerald-600 transition duration-200 disabled:opacity-50"
               >
-                Verify
+                {isVerifying ? 'Verifying...' : 'Verify'}
               </button>
             </div>
           </div>
@@ -87,14 +170,42 @@ export default function Home() {
               Need Help?
             </a>
 
-            {/* Added message with a link to resend the email */}
-            <p className="text-center text-white">
-              <a href="#" className="underline font-semibold hover:text-emerald-300">
-                Can't find your code? Click here to resend.
-              </a>
-            </p>
+            <div className="text-center">
+              {timer > 0 ? (
+                <p className="text-white mt-2">
+                  <span className="opacity-60">{`Resend your code (${timer} seconds)`}</span>
+                </p>
+              ) : (
+                isResendVisible && (
+                  <div>
+                    <button
+                      onClick={handleResend}
+                      className="underline font-semibold text-white hover:text-emerald-300"
+                    >
+                      Resend your code
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Success message after verification */}
+        {isVerified && (
+          <div className="mt-6 text-green-500 font-bold">
+            <p>
+              Verify successfully, please{' '}
+              <span
+                className="cursor-pointer underline"
+                onClick={() => router.push('/login')}
+              >
+                click here
+              </span>{' '}
+              to login.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -1,8 +1,11 @@
+
 import { ReactNode } from "react";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import "./globals.css";
+import { SignUpProvider } from "@/context/SignUpContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en">  
       <body className={`${inter.className} bg-dark-2`}>
-        {children}
+          <SignUpProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </SignUpProvider>
       </body>
     </html>
   );
