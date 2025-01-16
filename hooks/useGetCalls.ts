@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useUser } from '@clerk/nextjs';
 import { Call, useStreamVideoClient } from '@stream-io/video-react-sdk';
+import { useAuthContext } from '@/context/AuthContext';
 
 export const useGetCalls = () => {
-  const { user } = useUser();
   const client = useStreamVideoClient();
   const [calls, setCalls] = useState<Call[]>();
   const [isLoading, setIsLoading] = useState(false);
-
+    const {user} = useAuthContext();
+  
   useEffect(() => {
     const loadCalls = async () => {
       if (!client || !user?.id) return;

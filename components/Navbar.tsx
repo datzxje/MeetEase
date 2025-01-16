@@ -1,4 +1,3 @@
-import { SignedIn, UserButton } from '@clerk/nextjs'
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
@@ -20,9 +19,7 @@ const Navbar = () => {
         </Link>
 
         <div className='flex-between gap-5'>
-          <SignedIn>
-            <UserButton />  
-          </SignedIn>  
+
           
         </div>  
     </nav>
